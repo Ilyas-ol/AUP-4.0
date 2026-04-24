@@ -1,0 +1,14 @@
+{
+  "license_id": "LIC-DEMO",
+  "customer_id": "CUST-01",
+  "product_id": "PROD-A",
+  "modules": ["core"],
+  "max_users": 10,
+  "valid_from": "2026-01-01",
+  "valid_to": "2026-12-31",
+  "environment_type": "on-prem",
+  "machine_binding": "MACHINE-OK",
+  "binary_hash": null,
+  "issued_at": "2026-04-24",
+  "version": 1
+}

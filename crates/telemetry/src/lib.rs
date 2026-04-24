@@ -1,4 +1,4 @@
-use aes_gcm::{aead::Aead, Aes256Gcm, Key, Nonce};
+use aes_gcm::{aead::Aead, Aes256Gcm, Key, KeyInit, Nonce};
 use base64::{engine::general_purpose, Engine as _};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
@@ -94,7 +94,7 @@ impl TelemetryStore {
             .decode(blob.ciphertext_b64.as_bytes())
             .map_err(|_| TelemetryError::Serialization)?;
 
-        let cipher = Aes256Gcm::new(Key::from_slice(&self.key));
+        let cipher = Aes256Gcm::new_from_slice(&self.key).map_err(|_| TelemetryError::Crypto)?;
         let plaintext = cipher
             .decrypt(Nonce::from_slice(&nonce), ciphertext.as_ref())
             .map_err(|_| TelemetryError::Crypto)?;
@@ -106,7 +106,7 @@ impl TelemetryStore {
         let mut nonce = [0u8; 12];
         rand::thread_rng().fill_bytes(&mut nonce);
 
-        let cipher = Aes256Gcm::new(Key::from_slice(&self.key));
+        let cipher = Aes256Gcm::new_from_slice(&self.key).map_err(|_| TelemetryError::Crypto)?;
         let ciphertext = cipher
             .encrypt(Nonce::from_slice(&nonce), plaintext.as_ref())
             .map_err(|_| TelemetryError::Crypto)?;

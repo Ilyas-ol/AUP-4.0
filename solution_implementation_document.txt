@@ -296,3 +296,4 @@ This hybrid architecture protects the license at multiple independent layers:
 - Detection layer catches and reports misuse
 
 Breaking one layer does not break the whole system. This gives credible, deployable protection for on-prem software licensing in a hackathon-appropriate PoC.
+cargo run -p license-issuer -- issue --payload licenses\payload.json --private-key licenses\keys\private.key --out licenses\license.signed.json

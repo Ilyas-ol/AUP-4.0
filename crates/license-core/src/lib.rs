@@ -81,3 +81,32 @@ pub fn verify_signed(license: &SignedLicense, public_key_b64: &str) -> Result<Li
     let payload = serde_json::from_str(&license.payload_json).map_err(|_| LicenseError::Serialization)?;
     Ok(payload)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sign_and_verify_round_trip() {
+        let (priv_b64, pub_b64) = generate_keypair();
+        let payload = LicensePayload {
+            license_id: "LIC-001".to_string(),
+            customer_id: "CUST-01".to_string(),
+            product_id: "PROD-A".to_string(),
+            modules: vec!["core".to_string()],
+            max_users: 10,
+            valid_from: "2026-01-01".to_string(),
+            valid_to: "2026-12-31".to_string(),
+            environment_type: "on-prem".to_string(),
+            machine_binding: None,
+            binary_hash: None,
+            issued_at: "2026-04-24".to_string(),
+            version: 1,
+        };
+
+        let signed = sign_payload(&payload, &priv_b64).expect("sign");
+        let verified = verify_signed(&signed, &pub_b64).expect("verify");
+        assert_eq!(verified.license_id, payload.license_id);
+        assert_eq!(verified.max_users, payload.max_users);
+    }
+}

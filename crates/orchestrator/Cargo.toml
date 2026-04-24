@@ -10,3 +10,5 @@ enclave-core = { path = "../enclave-core" }
 kernel-bridge = { path = "../kernel-bridge" }
 detection-layer = { path = "../detection-layer" }
 anti-tamper = { path = "../anti-tamper" }
+license-verifier = { path = "../license-verifier" }
+telemetry = { path = "../telemetry" }

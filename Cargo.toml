@@ -5,6 +5,10 @@ members = [
   "crates/kernel-bridge",
   "crates/detection-layer",
   "crates/anti-tamper",
-  "crates/orchestrator"
+  "crates/orchestrator",
+  "crates/license-core",
+  "crates/license-issuer",
+  "crates/license-verifier",
+  "crates/telemetry"
 ]
 resolver = "2"

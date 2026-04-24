@@ -1,0 +1,9 @@
+[package]
+name = "license-issuer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+license-core = { path = "../license-core" }
+serde_json = "1"

@@ -1,0 +1,9 @@
+[package]
+name = "license-verifier"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+license-core = { path = "../license-core" }
+serde_json = "1"
+thiserror = "1"

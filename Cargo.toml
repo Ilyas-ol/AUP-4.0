@@ -4,6 +4,7 @@ members = [
   "crates/enclave-core",
   "crates/kernel-bridge",
   "crates/detection-layer",
-  "crates/anti-tamper"
+  "crates/anti-tamper",
+  "crates/orchestrator"
 ]
 resolver = "2"

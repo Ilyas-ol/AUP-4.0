@@ -1,0 +1,12 @@
+[package]
+name = "orchestrator"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+thiserror = "1"
+tpm-binding = { path = "../tpm-binding" }
+enclave-core = { path = "../enclave-core" }
+kernel-bridge = { path = "../kernel-bridge" }
+detection-layer = { path = "../detection-layer" }
+anti-tamper = { path = "../anti-tamper" }

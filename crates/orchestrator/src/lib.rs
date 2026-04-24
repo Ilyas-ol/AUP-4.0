@@ -136,3 +136,83 @@ fn current_timestamp() -> String {
         .unwrap_or_default();
     now.as_secs().to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use license_core::{sign_payload, LicensePayload};
+
+    fn temp_path(name: &str) -> PathBuf {
+        let mut path = std::env::temp_dir();
+        let pid = std::process::id();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        path.push(format!("orch_{name}_{pid}_{now}.json"));
+        path
+    }
+
+    fn sample_payload() -> LicensePayload {
+        LicensePayload {
+            license_id: "LIC-ORCH".to_string(),
+            customer_id: "CUST-1".to_string(),
+            product_id: "PROD-1".to_string(),
+            modules: vec!["core".to_string(), "pro".to_string()],
+            max_users: 5,
+            valid_from: "2026-01-01".to_string(),
+            valid_to: "2026-12-31".to_string(),
+            environment_type: "on-prem".to_string(),
+            machine_binding: Some("MACHINE-1".to_string()),
+            binary_hash: None,
+            issued_at: "2026-04-24".to_string(),
+            version: 1,
+        }
+    }
+
+    #[test]
+    fn orchestrator_runs_and_logs_honeypot() {
+        let (priv_b64, pub_b64) = license_core::generate_keypair();
+        let payload = sample_payload();
+        let signed = sign_payload(&payload, &priv_b64).expect("sign");
+        let license_data = serde_json::to_string(&signed).expect("json");
+
+        let telemetry_path = temp_path("honeypot");
+        let telemetry_key = [3u8; 32];
+
+        let mut orchestrator = Orchestrator::new(OrchestratorConfig {
+            require_tpm: false,
+            anomaly_threshold: 10,
+            telemetry_path: telemetry_path.clone(),
+            telemetry_key,
+        });
+
+        let input = OrchestratorInput {
+            secret: b"secret".to_vec(),
+            tpm_blob: None,
+            risk_signal: 0,
+            telemetry: TelemetrySnapshot {
+                active_users: 1,
+                module_switches: 0,
+                request_rate: 1,
+            },
+            honeypot_called: true,
+            license_data,
+            license_public_key_b64: pub_b64,
+            license_constraints: LicenseConstraints {
+                today: "2026-06-01".to_string(),
+                requested_users: 1,
+                requested_modules: vec!["core".to_string()],
+                machine_binding: Some("MACHINE-1".to_string()),
+            },
+        };
+
+        let result = orchestrator.run(input);
+        assert!(result.is_err());
+
+        let store = TelemetryStore::new(telemetry_path, telemetry_key);
+        let events = store.load_events().expect("load");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].event_type, "honeypot");
+    }
+}

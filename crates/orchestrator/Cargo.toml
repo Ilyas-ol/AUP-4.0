@@ -12,3 +12,7 @@ detection-layer = { path = "../detection-layer" }
 anti-tamper = { path = "../anti-tamper" }
 license-verifier = { path = "../license-verifier" }
 telemetry = { path = "../telemetry" }
+
+[dev-dependencies]
+license-core = { path = "../license-core" }
+serde_json = "1"

@@ -63,3 +63,85 @@ pub fn validate_constraints(payload: &LicensePayload, constraints: &LicenseConst
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_payload() -> LicensePayload {
+        LicensePayload {
+            license_id: "LIC-TEST".to_string(),
+            customer_id: "CUST-1".to_string(),
+            product_id: "PROD-1".to_string(),
+            modules: vec!["core".to_string(), "pro".to_string()],
+            max_users: 5,
+            valid_from: "2026-01-01".to_string(),
+            valid_to: "2026-12-31".to_string(),
+            environment_type: "on-prem".to_string(),
+            machine_binding: Some("MACHINE-1".to_string()),
+            binary_hash: None,
+            issued_at: "2026-04-24".to_string(),
+            version: 1,
+        }
+    }
+
+    #[test]
+    fn constraints_pass() {
+        let payload = sample_payload();
+        let constraints = LicenseConstraints {
+            today: "2026-06-01".to_string(),
+            requested_users: 3,
+            requested_modules: vec!["core".to_string()],
+            machine_binding: Some("MACHINE-1".to_string()),
+        };
+        assert!(validate_constraints(&payload, &constraints).is_ok());
+    }
+
+    #[test]
+    fn constraints_fail_on_date() {
+        let payload = sample_payload();
+        let constraints = LicenseConstraints {
+            today: "2025-12-31".to_string(),
+            requested_users: 1,
+            requested_modules: vec!["core".to_string()],
+            machine_binding: Some("MACHINE-1".to_string()),
+        };
+        assert!(validate_constraints(&payload, &constraints).is_err());
+    }
+
+    #[test]
+    fn constraints_fail_on_module() {
+        let payload = sample_payload();
+        let constraints = LicenseConstraints {
+            today: "2026-06-01".to_string(),
+            requested_users: 1,
+            requested_modules: vec!["enterprise".to_string()],
+            machine_binding: Some("MACHINE-1".to_string()),
+        };
+        assert!(validate_constraints(&payload, &constraints).is_err());
+    }
+
+    #[test]
+    fn constraints_fail_on_users() {
+        let payload = sample_payload();
+        let constraints = LicenseConstraints {
+            today: "2026-06-01".to_string(),
+            requested_users: 10,
+            requested_modules: vec!["core".to_string()],
+            machine_binding: Some("MACHINE-1".to_string()),
+        };
+        assert!(validate_constraints(&payload, &constraints).is_err());
+    }
+
+    #[test]
+    fn constraints_fail_on_machine() {
+        let payload = sample_payload();
+        let constraints = LicenseConstraints {
+            today: "2026-06-01".to_string(),
+            requested_users: 1,
+            requested_modules: vec!["core".to_string()],
+            machine_binding: Some("OTHER".to_string()),
+        };
+        assert!(validate_constraints(&payload, &constraints).is_err());
+    }
+}

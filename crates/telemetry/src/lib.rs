@@ -33,6 +33,43 @@ pub struct TelemetryStore {
     key: [u8; 32],
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_path(name: &str) -> PathBuf {
+        let mut path = std::env::temp_dir();
+        let pid = std::process::id();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        path.push(format!("telemetry_{name}_{pid}_{now}.json"));
+        path
+    }
+
+    #[test]
+    fn append_and_load_round_trip() {
+        let key = [7u8; 32];
+        let path = temp_path("roundtrip");
+        let store = TelemetryStore::new(path.clone(), key);
+
+        let event = TelemetryEvent {
+            timestamp: "123".to_string(),
+            event_type: "honeypot".to_string(),
+            details: "triggered".to_string(),
+        };
+
+        store.append_event(event).expect("append");
+        let events = store.load_events().expect("load");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].event_type, "honeypot");
+
+        store.clear().expect("clear");
+        assert!(!path.exists());
+    }
+}
+
 impl TelemetryStore {
     pub fn new(path: PathBuf, key: [u8; 32]) -> Self {
         Self { path, key }

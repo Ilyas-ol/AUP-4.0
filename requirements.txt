@@ -1,0 +1,36 @@
+Requirements for AUP 4.0 (Offline License Protection)
+
+Rust Toolchain
+- rustup, cargo (stable)
+- clippy, rustfmt (recommended)
+
+Rust Crates (core)
+- serde, serde_json (license schema)
+- ed25519-dalek or p256 (license signatures)
+- sha2 (binary hash check)
+- aes-gcm (optional payload encryption)
+- rand (key material generation)
+- thiserror, anyhow (error handling)
+- tracing, tracing-subscriber (logging)
+- clap (CLI for issuer)
+
+Layer 0 - TPM
+- Windows: TPM Base Services (TBS) API or tpm2-tss
+- Optional tools: tpm2-tools (local testing)
+
+Layer 1 - Enclave
+- Intel SGX SDK (if real enclave is required)
+- Rust SGX bindings or FFI to SGX SDK
+- Demo-only: simulated enclave in Rust
+
+Layer 2 - Kernel/Driver
+- Windows: Windows Driver Kit (WDK) if real driver is required
+- Demo-only: user-space stubs in Rust
+
+Layer 3 - Detection/Telemetry
+- Encrypted local log buffer (implemented in Rust)
+- Optional anomaly model (simple thresholds in Rust)
+
+Build and Packaging
+- CMake or vcpkg only if native libraries are used
+- PowerShell scripts for demo automation (optional)

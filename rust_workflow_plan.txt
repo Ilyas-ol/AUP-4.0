@@ -1,0 +1,73 @@
+Rust Workflow Plan (Detailed, No Code Yet)
+
+Phase 0 - Alignment (0.5 day)
+- Confirm scope for hackathon demo (which layers are real vs simulated)
+- Decide target OS (Windows or Linux)
+- Confirm hardware availability (TPM, SGX)
+- Finalize threat model for demo (tamper, bypass, replay)
+
+Phase 1 - Project Structure (0.5 day)
+- Create Rust workspace with crates:
+  - license-issuer (CLI to generate + sign licenses)
+  - license-core (shared structs, schema, validation rules)
+  - license-verifier (library used by app runtime)
+  - demo-app (sample protected app)
+  - telemetry (local event log, optional upload)
+- Add docs/ with architecture, assumptions, demo steps
+
+Phase 2 - Cryptography and License Schema (1 day)
+- Define license payload schema (serde JSON)
+- Decide signature format (Ed25519 recommended for demo)
+- Implement signing in license-issuer
+- Implement signature verification in license-verifier
+- Add license versioning and schema validation
+- Deliverable: valid license file passes verification
+
+Phase 3 - TPM Binding (1 day or mock if hardware absent)
+- If TPM available:
+  - Integrate Windows TPM APIs or tpm2-tss bindings
+  - Seal secret on install, unseal at runtime
+- If TPM not available:
+  - Implement TPM mock using machine fingerprint + secure local storage
+- Deliverable: license runs only on bound machine
+
+Phase 4 - Enclave / Trusted Execution (1 day or simulated)
+- If SGX available:
+  - Add enclave crate and boundary interface
+  - Move license decryption + validation into enclave
+- If SGX not available:
+  - Simulate enclave boundary with isolated module + strict memory wiping
+- Deliverable: license secrets never leave trusted boundary
+
+Phase 5 - Anti-Patch Integrity (0.5 day)
+- Compute SHA-256 of app binary at runtime
+- Store expected hash inside signed license
+- Validate hash before allowing execution
+- Distribute checks across multiple call sites
+- Deliverable: patched binary fails validation
+
+Phase 6 - Detection + Deception (0.5 to 1 day)
+- Add decoy checks (honeypot functions) that log if touched
+- Implement local encrypted event log
+- Optional: lightweight anomaly rules (simple thresholds)
+- Deliverable: tamper attempts generate evidence
+
+Phase 7 - Kernel / Driver Layer (Optional for demo)
+- If time and OS allow:
+  - Prepare a minimal driver plan (not necessarily implemented)
+- For demo:
+  - Simulate driver checks at app start with stub checks
+- Deliverable: documented layer + optional stub
+
+Phase 8 - Demo Scenarios (0.5 day)
+- Scenario A: license tampering -> signature fails
+- Scenario B: replay on another machine -> binding fails
+- Scenario C: patch binary -> hash mismatch
+- Scenario D: honeypot triggered -> event logged
+- Deliverable: scripted demo steps
+
+Phase 9 - Documentation and Slides (0.5 day)
+- Architecture diagram (layers + data flow)
+- Threat model matrix (attack vs mitigation)
+- Limitations and future work
+- Deliverable: clear presentation for judges

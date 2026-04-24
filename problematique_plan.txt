@@ -1,0 +1,49 @@
+Plan (Problematique)
+
+1) Define threat model
+   - Tampering with license file
+   - Replay on other machines
+   - Extending validity
+   - Module unlock
+   - User-count inflation
+   - Reverse engineering
+
+2) Specify license data model
+   - Customer, product, modules
+   - User limit, validity window
+   - Environment type, machine binding
+   - Issuer, version
+
+3) Choose integrity mechanism
+   - Digital signature (public/private key)
+   - Optional encryption for sensitive fields
+
+4) Bind license to environment
+   - Hardware fingerprint or offline certificate chain
+   - Tolerances for hardware changes
+
+5) Add anti-rollback and freshness
+   - Monotonic counters or secure time fallback
+   - Audit log
+
+6) Implement verification flow
+   - Load license
+   - Verify signature
+   - Validate schema
+   - Enforce constraints at runtime
+
+7) Design update and recovery
+   - Secure renewal path
+   - Emergency revoke list (offline or online)
+   - Re-issue process
+
+8) Make it deployable
+   - Simple issuer tooling
+   - Offline activation support
+   - Minimal operational burden
+
+9) Provide demo PoC
+   - Generator + verifier
+   - Tamper attempt and failure
+
+10) Document constraints and residual risks

@@ -1,0 +1,9 @@
+[workspace]
+members = [
+  "crates/tpm-binding",
+  "crates/enclave-core",
+  "crates/kernel-bridge",
+  "crates/detection-layer",
+  "crates/anti-tamper"
+]
+resolver = "2"

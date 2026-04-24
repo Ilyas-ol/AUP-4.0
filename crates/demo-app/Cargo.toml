@@ -1,0 +1,9 @@
+[package]
+name = "demo-app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+orchestrator = { path = "../orchestrator" }
+license-verifier = { path = "../license-verifier" }
+detection-layer = { path = "../detection-layer" }

@@ -9,6 +9,7 @@ members = [
   "crates/license-core",
   "crates/license-issuer",
   "crates/license-verifier",
-  "crates/telemetry"
+  "crates/telemetry",
+  "crates/demo-app"
 ]
 resolver = "2"

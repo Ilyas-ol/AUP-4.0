@@ -1,0 +1,12 @@
+{
+  "requested_users": 1,
+  "requested_modules": ["core"],
+  "machine_binding": null,
+  "risk_signal": 0,
+  "honeypot_called": false,
+  "telemetry": {
+    "active_users": 1,
+    "module_switches": 0,
+    "request_rate": 1
+  }
+}

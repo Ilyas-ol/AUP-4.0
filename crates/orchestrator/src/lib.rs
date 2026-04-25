@@ -61,6 +61,10 @@ pub struct Orchestrator {
 
 impl Orchestrator {
     pub fn new(config: OrchestratorConfig) -> Self {
+        Self::new_with_kernel(config, KernelBridge::new())
+    }
+
+    pub fn new_with_kernel(config: OrchestratorConfig, kernel: KernelBridge) -> Self {
         let tpm = TpmBinding::new(TpmBindingConfig {
             require_tpm: config.require_tpm,
             machine_id_override: None,
@@ -68,7 +72,7 @@ impl Orchestrator {
         Self {
             tpm,
             enclave: Enclave::new(),
-            kernel: KernelBridge::new(),
+            kernel,
             detection: DetectionLayer::new(config.anomaly_threshold),
             telemetry: TelemetryStore::new(config.telemetry_path, config.telemetry_key),
         }
@@ -180,12 +184,15 @@ mod tests {
         let telemetry_path = temp_path("honeypot");
         let telemetry_key = [3u8; 32];
 
-        let mut orchestrator = Orchestrator::new(OrchestratorConfig {
-            require_tpm: false,
-            anomaly_threshold: 10,
-            telemetry_path: telemetry_path.clone(),
-            telemetry_key,
-        });
+        let mut orchestrator = Orchestrator::new_with_kernel(
+            OrchestratorConfig {
+                require_tpm: false,
+                anomaly_threshold: 10,
+                telemetry_path: telemetry_path.clone(),
+                telemetry_key,
+            },
+            KernelBridge::with_provider(Box::new(kernel_bridge::NullThreatSignalProvider)),
+        );
 
         let input = OrchestratorInput {
             secret: b"secret".to_vec(),

@@ -255,6 +255,6 @@ Production (future):
 
 ## 14) Appendix: How to Run the Demo
 - Normal run:
-  cargo run -p demo-app -- licenses\license.signed.json licenses\keys\public.key
-- Simulated attacks:
-  set env vars like SIM_DEBUGGER=1 or HONEYPOT=1, then run demo-app.
+   cargo run -p demo-app -- licenses\license.signed.json licenses\keys\public.key licenses\runtime_input.normal.json
+- Runtime input:
+   Provide runtime context in JSON (requested users/modules, machine binding, risk signal, honeypot flag, telemetry snapshot).

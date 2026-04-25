@@ -3,6 +3,11 @@ name = "tpm-binding"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = []
+real-tpm = ["dep:base64"]
+
 [dependencies]
 sha2 = "0.10"
 thiserror = "1"
+base64 = { version = "0.21", optional = true }

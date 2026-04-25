@@ -3,12 +3,36 @@ param(
     [string]$LicensePath = "licenses\license.signed.json",
     [string]$PrivateKeyPath = "licenses\keys\private.key",
     [string]$PublicKeyPath = "licenses\keys\public.key",
-    [string]$IssuedAt = "2026-04-25",
-    [string]$Today = "2026-06-01"
+    [string]$RuntimeInputPath = "licenses\runtime_input.simulation.json",
+    [string]$IssuedAt = "2026-04-25"
 )
 
-function Reset-DemoEnv {
-    Remove-Item Env:REQ_USERS,Env:REQ_MODULES,Env:TODAY,Env:MACHINE_BINDING,Env:HONEYPOT,Env:SIM_DEBUGGER,Env:SIM_INJECT,Env:SIM_VM -ErrorAction SilentlyContinue
+function Write-RuntimeInput {
+    param(
+        [int]$RequestedUsers = 1,
+        [string[]]$RequestedModules = @("core"),
+        [string]$MachineBinding = $null,
+        [int]$RiskSignal = 0,
+        [bool]$HoneypotCalled = $false,
+        [int]$ActiveUsers = 1,
+        [int]$ModuleSwitches = 0,
+        [int]$RequestRate = 1
+    )
+
+    $inputObj = @{
+        requested_users = $RequestedUsers
+        requested_modules = $RequestedModules
+        machine_binding = $MachineBinding
+        risk_signal = $RiskSignal
+        honeypot_called = $HoneypotCalled
+        telemetry = @{
+            active_users = $ActiveUsers
+            module_switches = $ModuleSwitches
+            request_rate = $RequestRate
+        }
+    }
+
+    $inputObj | ConvertTo-Json -Depth 4 | Set-Content -Path $RuntimeInputPath
 }
 
 function Run-Step {
@@ -17,8 +41,6 @@ function Run-Step {
     Write-Host "=== $Title ===" -ForegroundColor Cyan
     & $Body
 }
-
-Reset-DemoEnv
 
 Run-Step "Generate keys" {
     cargo run -p license-issuer -- gen-keys --out-private $PrivateKeyPath --out-public $PublicKeyPath
@@ -48,46 +70,29 @@ Run-Step "Sign license" {
 }
 
 Run-Step "Normal run (should PASS)" {
-    Reset-DemoEnv
-    $env:TODAY = $Today
-    cargo run -p demo-app -- $LicensePath $PublicKeyPath
+    Write-RuntimeInput
+    cargo run -p demo-app -- $LicensePath $PublicKeyPath $RuntimeInputPath
 }
 
 Run-Step "Crack attempt: honeypot (should DENY)" {
-    Reset-DemoEnv
-    $env:TODAY = $Today
-    $env:HONEYPOT = "1"
-    cargo run -p demo-app -- $LicensePath $PublicKeyPath
+    Write-RuntimeInput -HoneypotCalled $true
+    cargo run -p demo-app -- $LicensePath $PublicKeyPath $RuntimeInputPath
 }
 
-Run-Step "Crack attempt: debugger (should DENY)" {
-    Reset-DemoEnv
-    $env:TODAY = $Today
-    $env:SIM_DEBUGGER = "1"
-    cargo run -p demo-app -- $LicensePath $PublicKeyPath
+Run-Step "Suspicious context: risk signal high (should route DECOY)" {
+    Write-RuntimeInput -RiskSignal 5
+    cargo run -p demo-app -- $LicensePath $PublicKeyPath $RuntimeInputPath
 }
 
-Run-Step "Crack attempt: injection (should DENY)" {
-    Reset-DemoEnv
-    $env:TODAY = $Today
-    $env:SIM_INJECT = "1"
-    cargo run -p demo-app -- $LicensePath $PublicKeyPath
-}
-
-Run-Step "Crack attempt: VM (should DENY)" {
-    Reset-DemoEnv
-    $env:TODAY = $Today
-    $env:SIM_VM = "1"
-    cargo run -p demo-app -- $LicensePath $PublicKeyPath
+Run-Step "Anomaly spike (should DENY)" {
+    Write-RuntimeInput -ActiveUsers 999
+    cargo run -p demo-app -- $LicensePath $PublicKeyPath $RuntimeInputPath
 }
 
 Run-Step "Abuse attempt: too many users (should DENY)" {
-    Reset-DemoEnv
-    $env:TODAY = $Today
-    $env:REQ_USERS = "999"
-    cargo run -p demo-app -- $LicensePath $PublicKeyPath
+    Write-RuntimeInput -RequestedUsers 999
+    cargo run -p demo-app -- $LicensePath $PublicKeyPath $RuntimeInputPath
 }
 
-Reset-DemoEnv
 Write-Host "" 
 Write-Host "Demo complete." -ForegroundColor Green

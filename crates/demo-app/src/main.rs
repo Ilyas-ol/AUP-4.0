@@ -1,19 +1,63 @@
 use detection_layer::TelemetrySnapshot;
 use license_verifier::LicenseConstraints;
 use orchestrator::{Orchestrator, OrchestratorConfig, OrchestratorInput};
-use std::env;
+use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
+use time::OffsetDateTime;
+
+#[derive(Debug, Deserialize)]
+#[serde(default)]
+struct RuntimeTelemetry {
+    active_users: u32,
+    module_switches: u32,
+    request_rate: u32,
+}
+
+impl Default for RuntimeTelemetry {
+    fn default() -> Self {
+        Self {
+            active_users: 1,
+            module_switches: 0,
+            request_rate: 1,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(default)]
+struct RuntimeInput {
+    requested_users: u32,
+    requested_modules: Vec<String>,
+    machine_binding: Option<String>,
+    risk_signal: u8,
+    honeypot_called: bool,
+    telemetry: RuntimeTelemetry,
+}
+
+impl Default for RuntimeInput {
+    fn default() -> Self {
+        Self {
+            requested_users: 1,
+            requested_modules: vec!["core".to_string()],
+            machine_binding: None,
+            risk_signal: 0,
+            honeypot_called: false,
+            telemetry: RuntimeTelemetry::default(),
+        }
+    }
+}
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 3 {
-        eprintln!("Usage: demo-app <license.json> <public_key.txt>");
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() < 4 {
+        eprintln!("Usage: demo-app <license.json> <public_key.txt> <runtime_input.json>");
         std::process::exit(2);
     }
 
     let license_path = &args[1];
     let public_key_path = &args[2];
+    let runtime_input_path = &args[3];
 
     let license_data = match fs::read_to_string(license_path) {
         Ok(data) => data,
@@ -31,18 +75,34 @@ fn main() {
         }
     };
 
-    let requested_users = env_value_u32("REQ_USERS", 1);
-    let requested_modules = env_value_list("REQ_MODULES");
-    let today = env::var("TODAY").unwrap_or_else(|_| "2026-06-01".to_string());
-    let machine_binding = env::var("MACHINE_BINDING").ok();
-    let risk_signal = env_value_u8("RISK_SIGNAL", 0);
-    let honeypot_called = env_flag("HONEYPOT");
+    let runtime_data = match fs::read_to_string(runtime_input_path) {
+        Ok(data) => data,
+        Err(err) => {
+            eprintln!("Failed to read runtime input: {err}");
+            std::process::exit(1);
+        }
+    };
 
-    let telemetry_path = env::var("TELEMETRY_PATH").unwrap_or_else(|_| "telemetry.json".to_string());
+    let runtime_input: RuntimeInput = match serde_json::from_str(&runtime_data) {
+        Ok(input) => input,
+        Err(err) => {
+            eprintln!("Failed to parse runtime input JSON: {err}");
+            std::process::exit(1);
+        }
+    };
+
+    let today = current_utc_date();
+    let requested_modules = if runtime_input.requested_modules.is_empty() {
+        vec!["core".to_string()]
+    } else {
+        runtime_input.requested_modules
+    };
+
+    let telemetry_path = "telemetry.json".to_string();
     let telemetry_key = [9u8; 32];
 
     let mut orchestrator = Orchestrator::new(OrchestratorConfig {
-        require_tpm: false,
+        require_tpm: true,
         anomaly_threshold: 10,
         telemetry_path: PathBuf::from(telemetry_path),
         telemetry_key,
@@ -51,20 +111,20 @@ fn main() {
     let input = OrchestratorInput {
         secret: b"demo-secret".to_vec(),
         tpm_blob: None,
-        risk_signal,
+        risk_signal: runtime_input.risk_signal,
         telemetry: TelemetrySnapshot {
-            active_users: requested_users,
-            module_switches: 0,
-            request_rate: 1,
+            active_users: runtime_input.telemetry.active_users,
+            module_switches: runtime_input.telemetry.module_switches,
+            request_rate: runtime_input.telemetry.request_rate,
         },
-        honeypot_called,
+        honeypot_called: runtime_input.honeypot_called,
         license_data,
         license_public_key_b64: public_key_b64,
         license_constraints: LicenseConstraints {
             today,
-            requested_users,
+            requested_users: runtime_input.requested_users,
             requested_modules,
-            machine_binding,
+            machine_binding: runtime_input.machine_binding,
         },
     };
 
@@ -83,29 +143,6 @@ fn main() {
     }
 }
 
-fn env_flag(key: &str) -> bool {
-    env::var(key)
-        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-        .unwrap_or(false)
-}
-
-fn env_value_u32(key: &str, default: u32) -> u32 {
-    env::var(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
-}
-
-fn env_value_u8(key: &str, default: u8) -> u8 {
-    env::var(key).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
-}
-
-fn env_value_list(key: &str) -> Vec<String> {
-    env::var(key)
-        .ok()
-        .map(|v| {
-            v.split(',')
-                .map(|s| s.trim())
-                .filter(|s| !s.is_empty())
-                .map(|s| s.to_string())
-                .collect()
-        })
-        .unwrap_or_else(|| vec!["core".to_string()])
+fn current_utc_date() -> String {
+    OffsetDateTime::now_utc().date().to_string()
 }

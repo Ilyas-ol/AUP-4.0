@@ -2,6 +2,24 @@
 
 **AUP-4.0** is an offline, on-prem software license protection system designed to prevent tampering, falsification, and bypass. It is built entirely in Rust and utilizes a 4-layer defense architecture to make cracking economically irrational.
 
+## 👨‍⚖️ Note to Judges: How to Evaluate This Project
+
+If you are a judge looking to evaluate this codebase quickly, we have provided two automated, interactive scripts that will walk you through the entire 4-layer defense architecture, demonstrating both valid runs and thwarted attacks in real-time.
+
+**To run the interactive test suite locally (Requires Rust):**
+```powershell
+.\scripts\judge_demo.ps1
+```
+
+**To run the interactive test suite via Docker:**
+```powershell
+.\scripts\judge_docker_demo.ps1
+```
+
+*(These scripts will guide you step-by-step through generating keys, issuing AES-encrypted licenses, and simulating Tampering, Rollbacks, and Honeypot triggers).*
+
+---
+
 ## 🛡 Architecture
 
 AUP-4.0 protects licenses across four independent layers. Even if an attacker bypasses one layer, the remaining layers continue to protect the system.
@@ -48,6 +66,22 @@ The demo app loads the license, initializes the 4-layer orchestrator, and evalua
 ```powershell
 cargo run -p demo-app -- licenses\license.signed.json licenses\keys\public.key licenses\runtime_input.normal.json
 ```
+
+## 🐳 Docker Deployment
+
+AUP-4.0 is fully dockerized to allow testing in isolated environments. The containerized build automatically falls back to cross-platform simulators for the Kernel/TPM layers while preserving the full validation logic.
+
+### Start the application
+```powershell
+docker-compose up demo-app --build
+```
+
+### Issue a new license via Docker
+```powershell
+docker-compose run issue-license
+```
+
+
 
 ## 📦 SDKs
 

@@ -1,0 +1,21 @@
+services:
+  demo-app:
+    build: .
+    container_name: aup-demo
+    command: ["demo-app", "licenses/license.signed.json", "licenses/keys/public.key", "licenses/runtime_input.normal.json"]
+    volumes:
+      # Mount the licenses folder so we can easily edit the input json and test different scenarios
+      - ./licenses:/app/licenses
+
+  # Example of running the license issuer via docker-compose
+  issue-license:
+    build: .
+    container_name: aup-issuer
+    command: >
+      license-issuer issue 
+      --payload licenses/payload.json 
+      --private-key licenses/keys/private.key 
+      --out licenses/license.signed.json 
+      --encryption-key demo-secret
+    volumes:
+      - ./licenses:/app/licenses

@@ -113,32 +113,7 @@ impl Orchestrator {
     pub fn run(&mut self, input: OrchestratorInput) -> Result<OrchestratorResult, OrchestratorError> {
         self.tpm.require_available()?;
 
-        let sealed_blob = if input.tpm_blob.is_none() {
-            Some(self.tpm.seal_secret(&input.secret)?)
-        } else {
-            None
-        };
-
-        let unsealed_secret = if let Some(blob) = input.tpm_blob.as_ref() {
-            Some(self.tpm.unseal_secret(blob)?)
-        } else {
-            None
-        };
-
-        let actual_secret = unsealed_secret.as_ref().unwrap_or(&input.secret);
-
-        let enclave_key: [u8; 32] = {
-            let mut k = [0u8; 32];
-            for (i, byte) in k.iter_mut().enumerate() {
-                *byte = actual_secret[i % actual_secret.len()];
-            }
-            k
-        };
-
-        let decrypted_license = license_core::decrypt_license(&input.license_data, &enclave_key)
-            .map_err(|_| OrchestratorError::Telemetry)?; // mapped to Telemetry for simplicity, or we could add CryptoError
-
-        let payload = verify_from_str(&decrypted_license, &input.license_public_key_b64)?;
+        let payload = verify_from_str(&input.license_data, &input.license_public_key_b64)?;
         validate_constraints(&payload, &input.license_constraints)?;
 
         // --- Anti-Rollback ---
@@ -168,14 +143,34 @@ impl Orchestrator {
             self.append_event("integrity", "binary hash verified OK")?;
         }
 
+        let sealed_blob = if input.tpm_blob.is_none() {
+            Some(self.tpm.seal_secret(&input.secret)?)
+        } else {
+            None
+        };
+
+        let unsealed_secret = if let Some(blob) = input.tpm_blob.as_ref() {
+            Some(self.tpm.unseal_secret(blob)?)
+        } else {
+            None
+        };
+
         self.enclave.init()?;
         self.enclave.integrity_check()?;
 
         // Execute license verification inside enclave boundary.
         // The enclave seals/unseals the license data, proving the trust boundary.
+        let enclave_key: [u8; 32] = {
+            let mut k = [0u8; 32];
+            let src = &input.secret;
+            for (i, byte) in k.iter_mut().enumerate() {
+                *byte = src[i % src.len()];
+            }
+            k
+        };
         let _enclave_result = self.enclave.execute_trusted(
             &enclave_key,
-            decrypted_license.as_bytes(),
+            input.license_data.as_bytes(),
         )?;
 
         self.kernel.check_debugger()?;

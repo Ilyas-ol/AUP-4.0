@@ -139,18 +139,7 @@ fn main() {
                 eprintln!("APP START: DENIED (silent kill)");
                 std::process::exit(1);
             }
-            
-            // --- Distributed Check: Secondary validation away from main initialization ---
-            // Simulates checking the license state again later in the application flow.
-            if !result.license_ok {
-                eprintln!("SECONDARY CHECK: DENIED (license invalidated)");
-                std::process::exit(1);
-            }
-
             println!("APP START: OK (route: {:?})", result.route);
-            
-            // --- Normal application execution starts here ---
-            println!("Application running... (Press Ctrl+C to exit)");
         }
         Err(err) => {
             eprintln!("APP START: DENIED ({err})");

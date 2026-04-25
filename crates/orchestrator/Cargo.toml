@@ -14,7 +14,7 @@ license-verifier = { path = "../license-verifier" }
 telemetry = { path = "../telemetry" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-license-core = { path = "../license-core" }
 
 [dev-dependencies]
+license-core = { path = "../license-core" }
 serde_json = "1"

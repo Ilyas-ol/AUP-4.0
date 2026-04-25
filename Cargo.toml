@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "crates/sdk-ffi",
   "crates/tpm-binding",
   "crates/enclave-core",
   "crates/kernel-bridge",

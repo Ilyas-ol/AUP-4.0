@@ -1,0 +1,114 @@
+AUP SDK Implementation (FFI) - Detailed Guide
+
+Purpose
+Provide a language-agnostic integration path for offline clients by exposing the core license logic as a native library and thin SDKs for Node and Python.
+
+High-Level Architecture
+1) Rust core logic (license verification + constraints) is compiled into a native library.
+2) A small C ABI boundary (sdk-ffi) exposes stable functions that any language can call.
+3) Node and Python SDKs are thin wrappers around the C ABI.
+4) All operations remain offline and local.
+
+Scope of this scaffolding
+- Exposes license verification from JSON + public key + constraints.
+- Uses a stable C ABI suitable for FFI.
+- Does not yet include full orchestration (TPM, kernel bridge, detection) in the SDK boundary.
+- Provides a clear path to expand the API later without breaking clients.
+
+Folder Layout
+- crates/sdk-ffi
+  - src/lib.rs: C ABI exports
+  - include/sdk.h: C header for clients
+- sdk/node
+  - index.js: Node FFI wrapper
+  - package.json: Node dependencies
+- sdk/python
+  - aup_sdk/__init__.py: Python ctypes wrapper
+  - pyproject.toml: package metadata
+
+Build Output (native library)
+- Windows: aup_sdk.dll
+- Linux: libaup_sdk.so
+- macOS: libaup_sdk.dylib
+
+FFI API Contract (current)
+Function: sdk_verify_license_json
+- Inputs:
+  - license_json: string (signed license JSON)
+  - public_key_b64: string (base64 public key)
+  - today: string (YYYY-MM-DD)
+  - requested_users: unsigned int
+  - requested_modules_csv: string (comma-separated, optional)
+  - machine_binding: string (optional)
+- Return codes:
+  - 0: SDK_OK
+  - 1: SDK_INVALID_LICENSE
+  - 2: SDK_CONSTRAINT_FAILED
+  - 3: SDK_INTERNAL_ERROR
+
+Function: sdk_last_error
+- Writes last error message into caller-provided buffer
+- Returns required length including null terminator
+
+How Node SDK Works
+1) Loads the native library with ffi-napi.
+2) Calls sdk_verify_license_json with string arguments.
+3) If return code is not OK, calls sdk_last_error to retrieve a human-readable message.
+
+How Python SDK Works
+1) Loads the native library via ctypes.
+2) Calls sdk_verify_license_json with UTF-8 encoded strings.
+3) If return code is not OK, calls sdk_last_error and returns error text.
+
+Client Integration Flow (Offline)
+1) Client installs SDK (Node or Python).
+2) Client deploys the native library alongside their application.
+3) Client calls verify function on startup or at feature gate.
+4) SDK returns allow/deny + reason.
+
+Example: Node (conceptual)
+- const sdk = require('aup-sdk');
+- const result = sdk.verifyLicenseJson({ ... });
+- if (result.code !== 0) deny.
+
+Example: Python (conceptual)
+- from aup_sdk import verify_license_json
+- result = verify_license_json(...)
+- if result['code'] != 0: deny.
+
+Offline Considerations
+- No network calls.
+- No external dependency at runtime beyond the native library.
+- Logs and telemetry remain local.
+
+Extending to Full 4-Layer Orchestration
+To expose the full pipeline to clients, extend the C ABI:
+- Add sdk_verify_full(...) that accepts:
+  - telemetry snapshot
+  - risk signal
+  - honeypot flag
+  - optional TPM blob
+- Internally call orchestrator::run.
+- Keep the current sdk_verify_license_json as a stable compatibility layer.
+
+Versioning Strategy
+- Semantic version the C ABI and SDK packages.
+- Add new functions instead of changing signatures.
+- Document supported return codes and behavior.
+
+Deployment Checklist
+- Build sdk-ffi for each target OS/arch.
+- Ship DLL/SO/DYLIB with the SDK.
+- Provide environment variable for library path (AUP_SDK_LIB).
+- Provide a minimal example for the client team.
+
+Pitch Notes
+- One offline core, many language SDKs.
+- No reimplementation of security logic in client languages.
+- Consistent behavior across platforms.
+- Compatible with air-gapped environments.
+
+Next Steps (optional)
+- Add a dedicated CMake or build script to package native artifacts.
+- Implement full orchestrator exposure in FFI.
+- Add automated tests for SDK wrappers.

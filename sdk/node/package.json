@@ -1,0 +1,12 @@
+{
+    "name": "aup-sdk",
+    "version": "0.1.0",
+    "description": "Offline AUP SDK for Node (FFI wrapper)",
+    "main": "index.js",
+    "type": "commonjs",
+    "private": true,
+    "dependencies": {
+        "ffi-napi": "^4.0.3",
+        "ref-napi": "^3.0.3"
+    }
+}

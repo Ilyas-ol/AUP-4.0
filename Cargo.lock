@@ -538,6 +538,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "sdk-ffi"
+version = "0.1.0"
+dependencies = [
+ "license-verifier",
+]
+
+[[package]]
 name = "semver"
 version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"

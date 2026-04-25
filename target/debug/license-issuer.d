@@ -1,1 +1,1 @@
-C:\Users\oi_ou\OneDrive\Desktop\AUP\ 4.0\target\debug\license-issuer.exe: C:\Users\oi_ou\OneDrive\Desktop\AUP\ 4.0\crates\license-core\src\lib.rs C:\Users\oi_ou\OneDrive\Desktop\AUP\ 4.0\crates\license-issuer\src\main.rs
+C:\Users\CBBC\Desktop\aup_2nd\AUP-4.0\target\debug\license-issuer.exe: C:\Users\CBBC\Desktop\aup_2nd\AUP-4.0\crates\license-core\src\lib.rs C:\Users\CBBC\Desktop\aup_2nd\AUP-4.0\crates\license-issuer\src\main.rs

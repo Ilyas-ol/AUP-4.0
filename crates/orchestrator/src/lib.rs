@@ -1,3 +1,4 @@
+use anti_tamper::{hash_file, IntegrityError};
 use detection_layer::{DetectionError, DetectionLayer, TelemetrySnapshot};
 use enclave_core::{Enclave, EnclaveError};
 use kernel_bridge::{ExecutionRoute, KernelBridge, KernelBridgeError};
@@ -5,6 +6,13 @@ use license_verifier::{validate_constraints, verify_from_str, LicenseConstraints
 use telemetry::{TelemetryEvent, TelemetryStore};
 use tpm_binding::{TpmBinding, TpmBindingConfig, TpmError};
 use std::path::PathBuf;
+use std::fs;
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
+pub struct LicenseState {
+    pub last_version: u32,
+    pub last_issued_at: String,
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum OrchestratorError {
@@ -18,8 +26,12 @@ pub enum OrchestratorError {
     Detection(#[from] DetectionError),
     #[error("license error: {0}")]
     License(#[from] VerifyError),
+    #[error("integrity error: {0}")]
+    Integrity(#[from] IntegrityError),
     #[error("telemetry error")]
     Telemetry,
+    #[error("rollback detected")]
+    RollbackDetected,
 }
 
 #[derive(Debug, Clone)]
@@ -32,6 +44,8 @@ pub struct OrchestratorInput {
     pub license_data: String,
     pub license_public_key_b64: String,
     pub license_constraints: LicenseConstraints,
+    /// Path to the protected binary for hash verification.
+    pub binary_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone)]
@@ -49,6 +63,7 @@ pub struct OrchestratorConfig {
     pub anomaly_threshold: u32,
     pub telemetry_path: PathBuf,
     pub telemetry_key: [u8; 32],
+    pub state_path: PathBuf,
 }
 
 pub struct Orchestrator {
@@ -57,6 +72,7 @@ pub struct Orchestrator {
     kernel: KernelBridge,
     detection: DetectionLayer,
     telemetry: TelemetryStore,
+    state_path: PathBuf,
 }
 
 impl Orchestrator {
@@ -75,14 +91,27 @@ impl Orchestrator {
             kernel,
             detection: DetectionLayer::new(config.anomaly_threshold),
             telemetry: TelemetryStore::new(config.telemetry_path, config.telemetry_key),
+            state_path: config.state_path,
+        }
+    }
+
+    fn load_state(&self) -> LicenseState {
+        if let Ok(data) = fs::read_to_string(&self.state_path) {
+            if let Ok(state) = serde_json::from_str(&data) {
+                return state;
+            }
+        }
+        LicenseState::default()
+    }
+
+    fn save_state(&self, state: &LicenseState) {
+        if let Ok(data) = serde_json::to_string(state) {
+            let _ = fs::write(&self.state_path, data);
         }
     }
 
     pub fn run(&mut self, input: OrchestratorInput) -> Result<OrchestratorResult, OrchestratorError> {
         self.tpm.require_available()?;
-
-        let payload = verify_from_str(&input.license_data, &input.license_public_key_b64)?;
-        validate_constraints(&payload, &input.license_constraints)?;
 
         let sealed_blob = if input.tpm_blob.is_none() {
             Some(self.tpm.seal_secret(&input.secret)?)
@@ -96,8 +125,58 @@ impl Orchestrator {
             None
         };
 
+        let actual_secret = unsealed_secret.as_ref().unwrap_or(&input.secret);
+
+        let enclave_key: [u8; 32] = {
+            let mut k = [0u8; 32];
+            for (i, byte) in k.iter_mut().enumerate() {
+                *byte = actual_secret[i % actual_secret.len()];
+            }
+            k
+        };
+
+        let decrypted_license = license_core::decrypt_license(&input.license_data, &enclave_key)
+            .map_err(|_| OrchestratorError::Telemetry)?; // mapped to Telemetry for simplicity, or we could add CryptoError
+
+        let payload = verify_from_str(&decrypted_license, &input.license_public_key_b64)?;
+        validate_constraints(&payload, &input.license_constraints)?;
+
+        // --- Anti-Rollback ---
+        let mut state = self.load_state();
+        if payload.version < state.last_version {
+            return Err(OrchestratorError::RollbackDetected);
+        }
+        if payload.version == state.last_version && payload.issued_at < state.last_issued_at {
+            return Err(OrchestratorError::RollbackDetected);
+        }
+        
+        state.last_version = payload.version;
+        state.last_issued_at = payload.issued_at.clone();
+        self.save_state(&state);
+
+        // --- Anti-Tamper: verify binary hash if present in license ---
+        if let (Some(expected_hex), Some(bin_path)) = (&payload.binary_hash, &input.binary_path) {
+            let actual_hash = hash_file(bin_path)?;
+            let expected_bytes = hex_to_bytes(expected_hex)
+                .ok_or(IntegrityError::HashMismatch)?;
+            if expected_bytes.len() != 32 {
+                return Err(IntegrityError::HashMismatch.into());
+            }
+            let mut expected_arr = [0u8; 32];
+            expected_arr.copy_from_slice(&expected_bytes);
+            anti_tamper::verify_hash(expected_arr, actual_hash)?;
+            self.append_event("integrity", "binary hash verified OK")?;
+        }
+
         self.enclave.init()?;
         self.enclave.integrity_check()?;
+
+        // Execute license verification inside enclave boundary.
+        // The enclave seals/unseals the license data, proving the trust boundary.
+        let _enclave_result = self.enclave.execute_trusted(
+            &enclave_key,
+            decrypted_license.as_bytes(),
+        )?;
 
         self.kernel.check_debugger()?;
         self.kernel.block_injection()?;
@@ -139,6 +218,16 @@ fn current_timestamp() -> String {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default();
     now.as_secs().to_string()
+}
+
+fn hex_to_bytes(hex: &str) -> Option<Vec<u8>> {
+    if hex.len() % 2 != 0 {
+        return None;
+    }
+    (0..hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).ok())
+        .collect()
 }
 
 #[cfg(test)]
@@ -190,6 +279,7 @@ mod tests {
                 anomaly_threshold: 10,
                 telemetry_path: telemetry_path.clone(),
                 telemetry_key,
+                state_path: temp_path("state"),
             },
             KernelBridge::with_provider(Box::new(kernel_bridge::NullThreatSignalProvider)),
         );
@@ -212,6 +302,7 @@ mod tests {
                 requested_modules: vec!["core".to_string()],
                 machine_binding: Some("MACHINE-1".to_string()),
             },
+            binary_path: None,
         };
 
         let result = orchestrator.run(input);

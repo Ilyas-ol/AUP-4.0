@@ -1,4 +1,4 @@
-use license_core::{verify_signed, LicenseError, LicensePayload, SignedLicense};
+use license_core::{verify_signed, LicensePayload, SignedLicense};
 use std::fs;
 use std::path::Path;
 

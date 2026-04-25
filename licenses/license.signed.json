@@ -1,4 +1,1 @@
-{
-  "payload_json": "{\"license_id\":\"LIC-DEMO\",\"customer_id\":\"CUST-01\",\"product_id\":\"PROD-A\",\"modules\":[\"core\"],\"max_users\":10,\"valid_from\":\"2026-01-01\",\"valid_to\":\"2026-12-31\",\"environment_type\":\"on-prem\",\"machine_binding\":null,\"binary_hash\":null,\"issued_at\":\"2026-04-25\",\"version\":1}",
-  "signature_b64": "QnwU77w4eWrKcOEaX/rfeSJo5ukhAShuA1X46qLd3oCR1RHCRA5FSVp8GauJZ2BCKfezD62G5+JQWQ7G+VVpAw=="
-}
+{"ciphertext_b64":"MyE/CIrMQqCRQh3Oz7txFuqTwiGK29mjHY34htSccZMgyvUAsDH1D3LUvozQKqjXm9H3wYhUG0/KSaRZHLn4OfKfdShNJBe4OmgcZncwN+lZFtI77bUU7LHr+pXsF6SJkPbBeFgBHSc0CX9g+yKoNbCYH0hBtyP7uL+UDYaqt38QfKEMOq8gG1rSoov9dn9vhG2D9pF8ce3zLf17tBpLczt5eVZkZwYCfyKw9y8CmhCSUD5xOTw7iGUcGdlKMcjVYVKrX+xth81G/qkbNwJM96uy3jSE01GAFjc54CXso9KdaZk9a6Z+6JjZgPSppklsejGinUb3clEYkShUGH8oD5dv29IcYd1blS+Rn4MBtGSZiMQlF95TE9wU7xpaYftKQ8ZPvCIvtVVvfExa6uYALhS6L/kDS8p6nmyj880gdaeb0W/EWl2QV5z8y6MSagIlKOXZa4tQ5dg6GXhIpHGr0i1mbubw1bmZ93r0zx0NCvC/Iz1M9hIik6PBJ8c0lCflv2our9RI6RWj9KiwHGLuQGeA32XG4EJw9ctVvC65Y8Udo5A+wAX+irfNkTskP23In+k/VZXizi6c1Ammr7ihEejWaUsKug==","nonce_b64":"wvhVWQKG4q3pUab+"}

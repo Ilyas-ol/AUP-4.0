@@ -5,3 +5,6 @@ edition = "2021"
 
 [dependencies]
 thiserror = "1"
+aes-gcm = "0.10"
+rand = "0.8"
+zeroize = { version = "1", features = ["derive"] }
